@@ -47,6 +47,7 @@ def vendas_por_plano():
 # Rota para obter o top 3 cidades com mais clientes
 @app.route('/top3_cidades')
 def top3_cidades():
+    clientes_por_cidade = df_consolidado.groupby('Cidade')['Cliente'].nunique().sort_values(ascending=False)
     top3_cidades = clientes_por_cidade.head(3)
     return jsonify(top3_cidades.to_dict())
 
