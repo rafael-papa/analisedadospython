@@ -4,6 +4,10 @@ import sqlite3
 import plotly.express as px
 import plotly.io as pio
 import random
+import config
+
+DB_PATH = config.BD_PATH
+DRINKS_PATH = config.DRINKS_PATH
 
 # Configurar o Plotly para abrir sempre os gráficos no navegador
 pio.renderers.default = 'browser'
@@ -11,10 +15,10 @@ pio.renderers.default = 'browser'
 # Carregar o CSV
 # Certifique-se de que o arquivo está na mesma pasta
 
-df = pd.read_csv('C:/Users/sabado/Desktop/Python Analise Dados/Sistema/drinks.csv')
+df = pd.read_csv(DRINKS_PATH)
 
 # Cria o banco de dados sqlite com os dados CSV
-conn = sqlite3.connect('C:/Users/sabado/Desktop/Python Analise Dados/Sistema/consumo_alcool.db')
+conn = sqlite3.connect(DB_PATH)
 
 df.to_sql("drinks", conn, if_exists="replace", index=False)
 conn.commit()
@@ -53,7 +57,7 @@ def index():
 # Rota do gráfico de 10 paises com maior consumo de álcool
 @app.route('/grafico1')
 def grafico1():
-    conn = sqlite3.connect('C:/Users/sabado/Desktop/Python Analise Dados/Sistema/consumo_alcool.db')
+    conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query('''
         SELECT country, total_litres_of_pure_alcohol
         FROM drinks
@@ -67,7 +71,7 @@ def grafico1():
 # Rota de média global de consumo por tipo de bebida
 @app.route('/grafico2')
 def grafico2():
-    conn = sqlite3.connect('C:/Users/sabado/Desktop/Python Analise Dados/Sistema/consumo_alcool.db')
+    conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query("SELECT AVG(beer_servings) AS cerveja, AVG(spirit_servings) AS destilados, AVG(wine_servings) AS vinho FROM drinks", conn)
     conn.close()
     # Crialção dos dados e definição das colunas de segmentos e valores
@@ -75,10 +79,25 @@ def grafico2():
     fig = px.bar(df_melted, x="Bebida", y="Média de doses", title="Média de Consumo Global")
     return fig.to_html() + '<br/><a href="/">Voltar ao Início</a>'
 
-@app.route("/upload_avengers")
+@app.route("/upload_avengers", methods=['POST','GET'])
 def upload_avengers():
-    
-
+    if request.method == "POST":
+        file = request.files['file']
+        if not file:
+            return "<h3>Nenhum Arquivo enviado </h3>"
+        def_avengers = pd.read_csv(file, encoding='latin1')
+        conn = sqlite3.connect(DB_PATH)
+        df_avengers.to_sql('avengers', conn, if_exists='replace', index=False)
+        conn.commit()
+        conn.close()
+        return "<h3>Arquivo inserido com sucesso!</h3>"
+    return '''
+        <h2> Upload do arquivo Avengers </h2>
+        <form method='POST' enctype='multipart/form-data'>
+            <input type='file' name='file' accept='.csv'>
+            <input type='submit' value=' - Enviar - '>
+            </form>
+    '''
 
 if __name__ == '__main__':
     app.run(debug=True)
