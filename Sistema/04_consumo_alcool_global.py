@@ -6,7 +6,7 @@ import plotly.io as pio
 import random
 import config
 
-DB_PATH = config.BD_PATH
+DB_PATH = config.DB_PATH
 DRINKS_PATH = config.DRINKS_PATH
 
 # Configurar o Plotly para abrir sempre os gráficos no navegador
@@ -44,6 +44,7 @@ html_template = '''
             <li><a href="/comparar">Comparar Tipos</a></li>
             <li><a href="/upload_avengers">Upload CSV</a></li>
             <li><a href="/apagar_avengers">Apagar_avengers</a></li>
+            <li><a href="/ver_avengers">Ver Tabela Vingadores</a></li>
             <li><a href="/atribui_pais">Atribuir países Avengers</a></li>
             <li><a href="/vaa">VAA: Vingadores Alcoólicos Anônimos</a></li>
         </ul>
@@ -85,7 +86,7 @@ def upload_avengers():
         file = request.files['file']
         if not file:
             return "<h3>Nenhum Arquivo enviado </h3>"
-        def_avengers = pd.read_csv(file, encoding='latin1')
+        df_avengers = pd.read_csv(file, encoding='latin1')
         conn = sqlite3.connect(DB_PATH)
         df_avengers.to_sql('avengers', conn, if_exists='replace', index=False)
         conn.commit()
@@ -98,6 +99,51 @@ def upload_avengers():
             <input type='submit' value=' - Enviar - '>
             </form>
     '''
+
+@app.route('/apagar_avengers')
+def apagar_avengers():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("DROP TABLE IF EXISTS avengers")
+        conn.commit()
+        mensagem = "<h3>Tabela Avengers excluída com sucesso!</h3>"
+
+    except Exception as erro:
+        mensagem = f"<h3>Erro ao apagar a tabela! Erro:{erro}</h3>"
+    conn.close()
+    return mensagem + '<br><hr><a href="/"> - Voltar - </>'
+
+@app.route('/ver_avengers')
+def ver_avengers():
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        df_avengers = pd.read_sql_query("SELECT * FROM avengers", conn)
+
+    except Exception as errinho:
+        conn.close()
+        return f"<h3>Erro na consulta, motivo: {errinho}</h3>"
+    conn.close()
+    if df_avengers.empty:
+        return 'Tabela vazia'
+    return df_avengers.to_html(index=False)
+
+@app.route('/atribui_pais')
+def atribui_pais():
+    conn = sqlite3.connect(DB_PATH)
+    df_avengers = pd.read_sql_query("SELECT * FROM avengers", conn)
+    df_drinks = pd.read_sql_query("SELECT country FROM drinks", conn)
+
+    random.seed(42)
+    paises_possiveis = df_drinks["country"].unique()
+    df_avengers["country"] = [random.choice(paises_possiveis) for _ in range(len(df_avengers))]
+
+    df_avengers.to_sql('avengers', conn, if_exists='replace', index=False)
+    conn.commit()
+    conn.close()
+
+    return "Paises atribuidos com sucesso"
 
 if __name__ == '__main__':
     app.run(debug=True)
